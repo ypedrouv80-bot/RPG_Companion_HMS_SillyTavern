@@ -1,0 +1,12 @@
+{
+ "display_name":"RPG Companion HMS — Multi-Bot",
+ "loading_order":50,
+ "requires":[],
+ "optional":[],
+ "js":"index.js",
+ "css":"style.css",
+ "author":"Mazaki compatibility adaptation; HMS credits: TenderTriper (Perch), Marinara, Wireless (Ryah), Pyropia",
+ "version":"1.0.0",
+ "homePage":"https://github.com/ypedrouv80-bot/RPG_Companion_HMS_SillyTavern",
+ "auto_update":true
+}

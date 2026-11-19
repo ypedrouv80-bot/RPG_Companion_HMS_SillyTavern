@@ -1,0 +1,58 @@
+[
+  {
+    "id": "mushoku",
+    "text": "### WORLD STATE ###\nArmored Dragon Calendar: K420\nCurrent Arc: [MT-ARC:7]\nLocation: Rosenburg\nMagic Tiers: Earth Imperial\n***"
+  },
+  {
+    "id": "danmachi",
+    "text": "### WORLD STATE ###\nCurrent Arc: Arc 1\nLocation: Orario\nFalna: Level 1\nTracks: Main | Mirror: none\n***"
+  },
+  {
+    "id": "roshidere",
+    "text": "### WORLD STATE ###\nCampaign Arc: ARC I — Branch: baseline\n◆ Location: Seirei Academy -> Class 1-B\nChronology: ROSHI-ARC-01\n***"
+  },
+  {
+    "id": "jujutsu",
+    "text": "### WORLD STATE ###\nArc: Perfect Preparation\nLocation: Tokyo\nCursed Technique(s): Unknown\nCE Reserves: D\n***"
+  },
+  {
+    "id": "assassins-creed",
+    "text": "### WORLD STATE ###\nArc: Sequence 1\nLocation: Paris\nSynchronization: 100%\n***"
+  },
+  {
+    "id": "frieren",
+    "text": "### WORLD STATE ###\n31 AHP · Winter\n◆ Continent → Village\nArc 10: The Road\nGrimoire: 3 spells\n***"
+  },
+  {
+    "id": "konosuba",
+    "text": "### WORLD STATE ###\nArc 1 · Day 1 · ◆ Axel → Guild Street\nGift: Pending\nWallet: 0\n***"
+  },
+  {
+    "id": "cote",
+    "text": "### WORLD STATE ###\n◆ ANHS → Classroom\nArc 6-A: Island\nPrivate Points: 148200\n***"
+  },
+  {
+    "id": "overlord",
+    "text": "### WORLD STATE ###\nLocation: Nazarick\nArc: 1\nClasses: Mage\nHP: 100 | MP: 50\n***"
+  },
+  {
+    "id": "cyberpunk",
+    "text": "### WORLD STATE ###\nLocation: Night City\nArc: Prologue\nCyberware: None\nWallet: 0\n***"
+  },
+  {
+    "id": "bg3",
+    "text": "### WORLD STATE ###\nLocation: Sword Coast\nArc: Act 1\nSpell Slots: 2\n***"
+  },
+  {
+    "id": "generic",
+    "text": "### WORLD STATE ###\nLocation: Road\nArc: Custom\nInventory: 0\n***"
+  },
+  {
+    "id": "harry-potter",
+    "text": "[HP_LW_HUD]\nEra: The Marauders\nDate: 1971\nLocation: Hogwarts\nAssets: 0\n[/HP_LW_HUD]"
+  },
+  {
+    "id": "harry-potter",
+    "text": "[HP_LW_HUD]\nЭпоха: Мародёры\nДата: 1971\nЛокация: Хогвартс\nИмущество: 0\n[/HP_LW_HUD]"
+  }
+]
