@@ -15,13 +15,15 @@ export function mount(host=globalThis.SillyTavern){
  function save(){context().saveSettingsDebounced();render();}
  function download(value,name){const u=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));const a=el('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
  function group(title,rows){if(!rows.length)return;const d=el('details');d.append(el('summary',title+' ('+rows.length+')'));for(const r of rows)d.append(el('p',r.label+': '+r.value));root.append(d);}
- function render(){const c=context(),s=settings(),messages=messagesOf(c);root.replaceChildren(el('h3','🧭 RPG Companion HMS · 1.0.0'));
+ function render(){const c=context(),s=settings(),messages=messagesOf(c);root.replaceChildren(el('h3','🧭 RPG Companion HMS · 1.1.0'));
  const toggle=el('input');toggle.type='checkbox';toggle.checked=s.enabled;toggle.onchange=()=>{s.enabled=toggle.checked;save();};const label=el('label',' Enabled ');label.prepend(toggle);root.append(label);if(!s.enabled)return;
  const mode=el('select');for(const [value,title]of [['observer','Observer — read only'],['active','Tracker — local notes and export']]){const o=el('option',title);o.value=value;mode.append(o);}mode.value=s.mode;mode.onchange=()=>{s.mode=mode.value;save();};mode.setAttribute('aria-label','Companion mode');root.append(mode);
  const select=el('select');select.setAttribute('aria-label','Compatibility profile');for(const [id,name]of HMS.profiles){const o=el('option',name);o.value=id;select.append(o);}select.value=s.profile;select.onchange=()=>{s.profile=select.value;save();};root.append(select);
  const refresh=el('button','↻ Read current chat');refresh.onclick=render;root.append(refresh);
  root.append(el('p','No prompt injection or automatic model calls. This native edition reads HUDs and tracks local notes; Lumiverse simulation tools are not ported.','hms-note'));
- const snap=HMS.snapshot(messages,s.profile,c.name2||'');if(!snap){root.append(el('p','Waiting for a complete HUD in this campaign. Quoted/fenced examples are ignored.'));return;}
+ let native=null;try{native=globalThis.MeguminRPGHUD?.read?.();}catch{/* Native extension not ready; use HUD reader. */}
+ const snap=native && c.chatId!=null && String(native.chatId)===String(c.chatId) && native.state?.rows?.length ? {rows:native.state.rows,...HMS.readRows(native.state.rows,c.name2||'',s.profile),messageId:messages.at(-1)?.id,swipeId:0,selectors:{},native:true} : HMS.snapshot(messages,s.profile,c.name2||'');
+ if(native?.state?.error)root.append(el('p','Megumin HUD: '+native.state.error));if(!snap){root.append(el('p','Waiting for a complete HUD in this campaign. Quoted/fenced examples are ignored.'));return;}
  root.append(el('h4',snap.name),el('p','Source message '+(Number(snap.messageId)+1)+' · swipe '+snap.swipeId+(snap.stale?' · last available reading':'')));
  if(snap.location)root.append(el('h4','📍 '+snap.location));if(snap.arc)root.append(el('p','📖 '+snap.arc));
  group('Resources',snap.resources);group('Abilities / ranks as written',snap.abilities);group('Quests / obligations',snap.quests);

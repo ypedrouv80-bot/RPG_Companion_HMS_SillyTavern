@@ -18,4 +18,10 @@ const body=new E('body');globalThis.document={body,createElement:t=>new E(t),get
 const cleanup=mount({getContext:()=>ctx});const all=n=>[n,...n.children.flatMap(all)];let nodes=all(body);check(()=>assert(nodes.some(n=>n.textContent==='📍 Rosenburg')));check(()=>assert.equal(events.size,2));
 let mode=nodes.find(n=>n.tag==='select');mode.value='active';mode.onchange();nodes=all(body);const notes=nodes.find(n=>n.tag==='textarea');notes.value='Local notes';nodes.find(n=>n.textContent==='Save notes in this chat').onclick();check(()=>assert.equal(metadata.rpg_companion_hms_multibot.notes,'Local notes'));check(()=>assert.equal(ctx.chat[0].mes,fixtures[0].text));
 ctx.chat=[{mes:fixtures[1].text,is_user:false}];events.get('chat')();check(()=>assert(all(body).some(n=>n.textContent==='📍 Orario')));
+ctx.chatId='native-test';
+globalThis.MeguminRPGHUD={read:()=>({chatId:'native-test',state:{rows:[{text:'Location: Native Salon'},{text:'Magic Tiers: Fire Imperial'}],error:''}})};
+events.get('chat')();check(()=>assert(all(body).some(n=>n.textContent==='📍 Native Salon')));
+globalThis.MeguminRPGHUD.read=()=>({chatId:'different-chat',state:{rows:[{text:'Location: Wrong chat'}]}});events.get('chat')();check(()=>assert(!all(body).some(n=>n.textContent==='📍 Wrong chat')));
+globalThis.MeguminRPGHUD.read=()=>{throw Error('Not ready')};events.get('chat')();check(()=>assert(all(body).some(n=>n.textContent==='📍 Orario')));
+delete globalThis.MeguminRPGHUD;
 cleanup();check(()=>assert.equal(events.size,0));console.log('SillyTavern adapter: '+count+' assertions passed (simulated DOM/context; no live host).');
