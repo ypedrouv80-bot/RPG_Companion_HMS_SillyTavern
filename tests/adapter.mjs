@@ -18,10 +18,15 @@ const body=new E('body');globalThis.document={body,createElement:t=>new E(t),get
 const cleanup=mount({getContext:()=>ctx});const all=n=>[n,...n.children.flatMap(all)];let nodes=all(body);check(()=>assert(nodes.some(n=>n.textContent==='📍 Rosenburg')));check(()=>assert.equal(events.size,2));
 let mode=nodes.find(n=>n.tag==='select');mode.value='active';mode.onchange();nodes=all(body);const notes=nodes.find(n=>n.tag==='textarea');notes.value='Local notes';nodes.find(n=>n.textContent==='Save notes in this chat').onclick();check(()=>assert.equal(metadata.rpg_companion_hms_multibot.notes,'Local notes'));check(()=>assert.equal(ctx.chat[0].mes,fixtures[0].text));
 ctx.chat=[{mes:fixtures[1].text,is_user:false}];events.get('chat')();check(()=>assert(all(body).some(n=>n.textContent==='📍 Orario')));
-ctx.chatId='native-test';
-globalThis.MeguminRPGHUD={read:()=>({chatId:'native-test',state:{rows:[{text:'Location: Native Salon'},{text:'Magic Tiers: Fire Imperial'}],error:''}})};
-events.get('chat')();check(()=>assert(all(body).some(n=>n.textContent==='📍 Native Salon')));
-globalThis.MeguminRPGHUD.read=()=>({chatId:'different-chat',state:{rows:[{text:'Location: Wrong chat'}]}});events.get('chat')();check(()=>assert(!all(body).some(n=>n.textContent==='📍 Wrong chat')));
-globalThis.MeguminRPGHUD.read=()=>{throw Error('Not ready')};events.get('chat')();check(()=>assert(all(body).some(n=>n.textContent==='📍 Orario')));
-delete globalThis.MeguminRPGHUD;
 cleanup();check(()=>assert.equal(events.size,0));console.log('SillyTavern adapter: '+count+' assertions passed (simulated DOM/context; no live host).');
+
+// Original Megumin integration. No fork bridge or prompt writes.
+ctx.chatId='original';ctx.chatMetadata={megumin_state:{}};let configured=0;const core={localProfile:{blockStack:{order:[]},statBlocks:{sheet:{fields:[{label:'Mana',type:'text',hint:'keep me'}]}}}};
+const world={scene:{location:'Original Salon',time:'Evening'},cast:{a:{name:'Ariel',present:true}},threads:[]};
+const api={getWorldState:()=>world,statsState:id=>id==='sheet'?{fields:{magic:{label:'Magic Tiers',text:'Fire Imperial'}}}:{people:{a:{name:'Ariel',fields:{r:{label:'Relationship',text:'friend'}}}}}};
+const loader=async url=>url.includes('core/state.js')?core:url.includes('core/profile.js')?{saveProfileToMemory(){configured++;}}:url.includes('blocks/registry.js')?{meguminSyncLegacyBlockIds(){core.localProfile.blocks=['info'];}}:api;
+const closeOriginal=mount({getContext:()=>ctx},loader);await new Promise(r=>setImmediate(r));const current=body.children.at(-1);check(()=>assert(all(current).some(n=>n.textContent==='📍 Original Salon')));check(()=>assert(all(current).some(n=>String(n.textContent).includes('Fire Imperial'))));
+await all(current).find(n=>n.textContent==='Configure RPG blocks in Megumin').onclick();check(()=>assert.equal(configured,1));check(()=>assert.deepEqual(core.localProfile.blockStack.order,['world','sheet','bonds']));check(()=>assert.equal(core.localProfile.statBlocks.sheet.fields.find(f=>f.label==='Mana').hint,'keep me'));
+const before=core.localProfile.statBlocks.sheet.fields.length;await all(current).find(n=>n.textContent==='Configure RPG blocks in Megumin').onclick();check(()=>assert.equal(core.localProfile.statBlocks.sheet.fields.length,before));
+world.scene.location='Changed Hall';events.get('swipe')();check(()=>assert(all(current).some(n=>n.textContent==='📍 Changed Hall')));
+ctx.chatId='different';ctx.chatMetadata={};events.get('chat')();check(()=>assert(!all(current).some(n=>n.textContent==='📍 Changed Hall')));closeOriginal();console.log('Original Megumin adapter: '+count+' total checks passed');
