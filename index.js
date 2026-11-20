@@ -1,3 +1,4 @@
+import {installDeltaRequests} from './compatibility/megumin-deltas.js';
 import {readMegumin,addRpgFields,meguminUrl} from './compatibility/megumin-original.js';
 import './compatibility/hud-profiles.js';
 const HMS=globalThis.HMSCompatibility, KEY='rpg_companion_hms_multibot';
@@ -9,7 +10,7 @@ export function timeline(messages,profile,name){
 export function messagesOf(ctx){return (ctx.chat||[]).filter(m=>!m.is_system).map(m=>({id:(ctx.chat||[]).indexOf(m),role:m.is_user?'user':'assistant',content:String(m.mes||''),swipe_id:m.swipe_id||0}));}
 function el(tag,text,cls){const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;}
 export function mount(host=globalThis.SillyTavern,loadModule=url=>import(url)){
- let nativeApi=null,nativePending=false,nativeError='',alive=true;
+ let nativeApi=null,nativePending=false,nativeError='',alive=true,undoDelta=null,deltaPending=false,deltaError='';
  const context=()=>host.getContext();let root=document.getElementById(KEY);if(root)return ()=>{};
  root=el('section',undefined,'hms-multibot');root.id=KEY;
  const target=document.getElementById('extensions_settings2')||document.getElementById('extensions_settings')||document.body;target.append(root);
@@ -17,19 +18,22 @@ export function mount(host=globalThis.SillyTavern,loadModule=url=>import(url)){
  function save(){context().saveSettingsDebounced();render();}
  function download(value,name){const u=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));const a=el('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
  function group(title,rows){if(!rows.length)return;const d=el('details');d.append(el('summary',title+' ('+rows.length+')'));for(const r of rows)d.append(el('p',r.label+': '+r.value));root.append(d);}
- function render(){const c=context(),s=settings(),messages=messagesOf(c);root.replaceChildren(el('h3','🧭 RPG Companion HMS · 1.2.0'));
- const toggle=el('input');toggle.type='checkbox';toggle.checked=s.enabled;toggle.onchange=()=>{s.enabled=toggle.checked;save();};const label=el('label',' Enabled ');label.prepend(toggle);root.append(label);if(!s.enabled)return;
- const mode=el('select');for(const [value,title]of [['observer','Observer — read only'],['active','Tracker — local notes and export']]){const o=el('option',title);o.value=value;mode.append(o);}mode.value=s.mode;mode.onchange=()=>{s.mode=mode.value;save();};mode.setAttribute('aria-label','Companion mode');root.append(mode);
+ function render(){const c=context(),s=settings(),messages=messagesOf(c);root.replaceChildren(el('h3','🧭 RPG Companion HMS · 1.3.0-beta.1'));
+ const toggle=el('input');toggle.type='checkbox';toggle.checked=s.enabled;toggle.onchange=()=>{s.enabled=toggle.checked;save();};const label=el('label',' Enabled ');label.prepend(toggle);root.append(label);if(!s.enabled){if(undoDelta){undoDelta();undoDelta=null;}return;}
+ const mode=el('select');for(const [value,title]of [['observer','Observer — read only'],['active','Tracker — notes, export and optional deltas']]){const o=el('option',title);o.value=value;mode.append(o);}mode.value=s.mode;mode.onchange=()=>{s.mode=mode.value;save();};mode.setAttribute('aria-label','Companion mode');root.append(mode);
  const select=el('select');select.setAttribute('aria-label','Compatibility profile');for(const [id,name]of HMS.profiles){const o=el('option',name);o.value=id;select.append(o);}select.value=s.profile;select.onchange=()=>{s.profile=select.value;save();};root.append(select);
  const refresh=el('button','↻ Read current chat');refresh.onclick=render;root.append(refresh);
- root.append(el('p','No prompt injection or automatic model calls. This native edition reads HUDs and tracks local notes; Lumiverse simulation tools are not ported.','hms-note'));
+ root.append(el('p',s.mode==='active'&&s.deltaBlocks?'Changed-fields mode adjusts only the native Sheet/Bonds output requests. It makes no extra model calls.':'No prompt injection or automatic model calls. Select Tracker mode to optionally enable changed-field output requests.','hms-note'));
  if(c.chatMetadata?.megumin_state && !nativeApi && !nativePending && !nativeError){nativePending=true;const requestedFolder=s.meguminFolder;loadModule(meguminUrl('src/state/index.js',requestedFolder)).then(api=>{if(settings().meguminFolder===requestedFolder)nativeApi=api;}).catch(e=>{if(settings().meguminFolder===requestedFolder)nativeError='Could not read original Megumin V11. Check its installation folder. '+e.message;}).finally(()=>{nativePending=false;if(alive)render();});}
+ const deltaToggle=el('input');deltaToggle.type='checkbox';deltaToggle.checked=!!s.deltaBlocks;deltaToggle.disabled=s.mode!=='active';const deltaLabel=el('label',' Only changed Sheet/Bonds fields (Tracker mode, main model) ');deltaLabel.prepend(deltaToggle);deltaToggle.onchange=()=>{s.deltaBlocks=deltaToggle.checked;deltaError='';if(!s.deltaBlocks&&undoDelta){undoDelta();undoDelta=null;}save();};root.append(deltaLabel);
+ if(s.mode==='active'&&s.deltaBlocks&&!undoDelta&&!deltaPending&&!deltaError){deltaPending=true;const deltaFolder=s.meguminFolder;Promise.all([loadModule(meguminUrl('src/features/blocks/registry.js',s.meguminFolder)),loadModule(meguminUrl('src/state/index.js',s.meguminFolder))]).then(([registry,api])=>{if(alive&&settings().enabled&&settings().mode==='active'&&settings().meguminFolder===deltaFolder&&settings().deltaBlocks)undoDelta=installDeltaRequests(registry,api,()=>alive&&settings().enabled&&settings().mode==='active'&&!!settings().deltaBlocks);}).catch(e=>{if(settings().meguminFolder===deltaFolder)deltaError=e.message;}).finally(()=>{deltaPending=false;if(alive)render();});}
+ if(deltaError)root.append(el('p','Changed-fields mode unavailable: '+deltaError));
  const setup=el('button','Configure RPG blocks in Megumin');setup.onclick=async()=>{setup.disabled=true;const chatId=c.chatId;try{const [core,profile,registry]=await Promise.all([loadModule(meguminUrl('src/core/state.js',s.meguminFolder)),loadModule(meguminUrl('src/core/profile.js',s.meguminFolder)),loadModule(meguminUrl('src/features/blocks/registry.js',s.meguminFolder))]);if(context().chatId!==chatId)throw Error('Chat changed; no fields were added.');if(!Array.isArray(core.localProfile?.blockStack?.order))throw Error('Open the original Megumin in this chat first.');if(typeof registry.meguminSyncLegacyBlockIds!=='function'||typeof profile.saveProfileToMemory!=='function')throw Error('Unsupported Megumin version');const n=addRpgFields(core.localProfile);for(const id of ['world','sheet','bonds'])if(!core.localProfile.blockStack.order.includes(id))core.localProfile.blockStack.order.push(id);registry.meguminSyncLegacyBlockIds();profile.saveProfileToMemory();root.append(el('p',n+' fields added; World State, Character Sheet and Bonds enabled. Existing fields and prompt are preserved. Reopen Megumin Blocks to review.'));}catch(e){root.append(el('p',e.message));}finally{setup.disabled=false;}};root.append(setup);
- const connection=el('details');connection.append(el('summary','Megumin connection (only if needed)'));const folder=el('input');folder.value=s.meguminFolder||'Megumin-Suite';folder.setAttribute('aria-label','Megumin installation folder');connection.append(folder);const reconnect=el('button','Reconnect');reconnect.onclick=()=>{try{meguminUrl('src/state/index.js',folder.value);s.meguminFolder=folder.value;nativeApi=null;nativeError='';save();}catch(e){root.append(el('p',e.message));}};connection.append(reconnect);root.append(connection);
+ const connection=el('details');connection.append(el('summary','Megumin connection (only if needed)'));const folder=el('input');folder.value=s.meguminFolder||'Megumin-Suite';folder.setAttribute('aria-label','Megumin installation folder');connection.append(folder);const reconnect=el('button','Reconnect');reconnect.onclick=()=>{try{meguminUrl('src/state/index.js',folder.value);if(undoDelta){undoDelta();undoDelta=null;}deltaError='';s.meguminFolder=folder.value;nativeApi=null;nativeError='';save();}catch(e){root.append(el('p',e.message));}};connection.append(reconnect);root.append(connection);
  let native=null;try{if(nativeApi)native=readMegumin(nativeApi,c);}catch(e){nativeError=e.message;}
  if(nativeError)root.append(el('p',nativeError));
  const snap=native?{rows:native.rows,...HMS.readRows(native.rows,c.name2||'',s.profile),selectors:{},native:true}:HMS.snapshot(messages,s.profile,c.name2||'');
- if(!snap){root.append(el('p','Waiting for a complete HUD in this campaign. Quoted/fenced examples are ignored.'));return;}
+ if(!snap){root.append(el('p','Waiting for a saved Megumin block or a complete bot HUD. Quoted/fenced examples are ignored.'));return;}
  root.append(el('h4',snap.name),el('p',snap.native?'Saved native Megumin blocks (read only)':'Source message '+(Number(snap.messageId)+1)+' · swipe '+snap.swipeId+(snap.stale?' · last available reading':'')));
  if(snap.location)root.append(el('h4','📍 '+snap.location));if(snap.arc)root.append(el('p','📖 '+snap.arc));
  group('Resources',snap.resources);group('Abilities / ranks as written',snap.abilities);group('Quests / obligations',snap.quests);
@@ -44,6 +48,6 @@ export function mount(host=globalThis.SillyTavern,loadModule=url=>import(url)){
  }
  }
  const ctx=context(),types=ctx.eventTypes||ctx.event_types||{},subscriptions=[];for(const key of ['CHAT_CHANGED','MESSAGE_RECEIVED','MESSAGE_UPDATED','MESSAGE_EDITED','MESSAGE_SWIPED','MESSAGE_DELETED','GENERATION_ENDED'])if(types[key]){const fn=()=>render();ctx.eventSource.on(types[key],fn);subscriptions.push([types[key],fn]);}
- render();return ()=>{alive=false;for(const[e,fn]of subscriptions)ctx.eventSource.removeListener(e,fn);root.remove();};
+ render();return ()=>{alive=false;if(undoDelta)undoDelta();for(const[e,fn]of subscriptions)ctx.eventSource.removeListener(e,fn);root.remove();};
 }
 if(globalThis.SillyTavern&&typeof document!=='undefined')mount();

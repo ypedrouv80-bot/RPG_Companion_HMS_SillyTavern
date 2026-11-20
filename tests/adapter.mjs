@@ -30,3 +30,13 @@ await all(current).find(n=>n.textContent==='Configure RPG blocks in Megumin').on
 const before=core.localProfile.statBlocks.sheet.fields.length;await all(current).find(n=>n.textContent==='Configure RPG blocks in Megumin').onclick();check(()=>assert.equal(core.localProfile.statBlocks.sheet.fields.length,before));
 world.scene.location='Changed Hall';events.get('swipe')();check(()=>assert(all(current).some(n=>n.textContent==='📍 Changed Hall')));
 ctx.chatId='different';ctx.chatMetadata={};events.get('chat')();check(()=>assert(!all(current).some(n=>n.textContent==='📍 Changed Hall')));closeOriginal();console.log('Original Megumin adapter: '+count+' total checks passed');
+
+// Optional delta switch changes requests only in Tracker mode and restores them.
+ctx.chatId='delta-test';ctx.chatMetadata={megumin_state:{}};ctx.extensionSettings.rpg_companion_hms_multibot={enabled:true,mode:'active',profile:'auto',deltaBlocks:true};
+const registry={MEGUMIN_BLOCK_REGISTRY:['sheet','bonds'].map(id=>({id,build:()=>id+' full',buildSplit:()=>({rules:'Native numeric limits',body:'Field: [value]'})}))};
+const originalBuild=registry.MEGUMIN_BLOCK_REGISTRY[0].build;
+const closeDelta=mount({getContext:()=>ctx},async url=>url.includes('blocks/registry.js')?registry:api);await new Promise(r=>setImmediate(r));
+check(()=>assert(registry.MEGUMIN_BLOCK_REGISTRY[0].build().includes('CHANGED FIELDS ONLY')));
+ctx.extensionSettings.rpg_companion_hms_multibot.mode='observer';check(()=>assert.equal(registry.MEGUMIN_BLOCK_REGISTRY[0].build(),'sheet full'));
+ctx.extensionSettings.rpg_companion_hms_multibot.mode='active';ctx.extensionSettings.rpg_companion_hms_multibot.enabled=false;check(()=>assert.equal(registry.MEGUMIN_BLOCK_REGISTRY[0].build(),'sheet full'));
+closeDelta();check(()=>assert.equal(registry.MEGUMIN_BLOCK_REGISTRY[0].build,originalBuild));console.log('With delta lifecycle: '+count+' total checks passed');
